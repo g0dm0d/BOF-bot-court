@@ -10,7 +10,7 @@ from discord import DMChannel
 from dotenv import load_dotenv
 
 load_dotenv()
-client = commands.Bot(command_prefix = '!')
+client = commands.Bot(command_prefix = os.getenv('PREFIX'))
 
 @client.event
 async def on_ready():
@@ -147,4 +147,5 @@ async def мои_дела(ctx):
             embed.add_field(name='Вердикт:', value=data.loc[i, 'verdict'], inline=False)
             await ctx.author.send(embed=embed)
 
-client.run(os.getenv('BOT_TOKEN'))
+if __name__ == "__main__":
+    client.run(os.getenv('BOT_TOKEN'))
