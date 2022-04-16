@@ -1,7 +1,5 @@
-import discord
-import os
+import discord, os, dotenv
 import pandas as pd
-import dotenv
 from discord import message
 from discord.ext import commands
 from discord.ext.commands import Bot
@@ -24,6 +22,9 @@ async def иск(ctx):
         return i.author.id == ctx.author.id
     await ctx.reply('Укажите ник игрока (@User#0000)')
     defendant = (await client.wait_for('message', check=check)).content
+    while defendant[2:3] == '&':
+        await ctx.reply('Укажите ник игрока (@User#0000)')
+        defendant = (await client.wait_for('message', check=check)).content
     await ctx.reply('Укажите возможные статьи. Если таковых нет - введите 0')
     article = (await client.wait_for('message', check=check)).content
     await ctx.reply('Опишите подробности дела')
@@ -40,7 +41,7 @@ async def иск(ctx):
     embed.add_field(name='Подробности:', value=more, inline=False)
     await ctx.channel.send(embed=embed)
     data = pd.read_csv('data.csv', delimiter=',')
-    data = data.append({'case_id':int(os.getenv('CASE_ID')), 'plaintiff':str(plaintiff)[2:-1], 'defendant':defendant, 'article':article, 'more':more, 'verdict':'-', 'status':'открыто'}, ignore_index=True)
+    data = data.append({'case_id':int(os.getenv('CASE_ID')), 'plaintiff':plaintiff, 'defendant':defendant, 'article':article, 'more':more, 'verdict':'-', 'status':'открыто'}, ignore_index=True)
     data.to_csv('data.csv', encoding='utf-8', index=False)
 
 @client.command(pass_context=True)
@@ -72,7 +73,7 @@ async def вердикт(ctx, *, case_id):
 async def дело(ctx, *, case_id):
     data = pd.read_csv('data.csv', delimiter=',')
     for i in data.index:
-        if data.loc[i, 'case_id'] == case_id:
+        if data.loc[i, 'case_id'] == int(case_id):
             embed = discord.Embed(
             title = '-'*60,
             colour = discord.Colour.dark_magenta()
@@ -86,14 +87,14 @@ async def дело(ctx, *, case_id):
             embed.add_field(name='Состояние:', value=data.loc[i, 'status'], inline=False)
             await ctx.channel.send(embed=embed)
 
-@client.command(pass_context=True)
+@client.command()
 async def отменить(ctx, *, case_id):
     role = discord.utils.get(ctx.guild.roles, name=os.environ['ROLE'])
     data = pd.read_csv('data.csv', delimiter=',')
     for i in data.index:
         if data.loc[i, 'case_id'] == int(case_id) and (data.loc[i, 'plaintiff'] == ctx.author.id or role in ctx.author.roles):
             data = data.drop([i])
-            data.to_csv('data.csv', sep=',', encoding='utf-8')
+            data.to_csv('data.csv', sep=',', encoding='utf-8', index=False)
             await ctx.reply('Удалено')
 
 @client.command()
@@ -134,7 +135,7 @@ async def мои_дела(ctx):
 
     await ctx.author.send('**ИСКИ ПРОТИВ ВАС**')
     for i in data.index:
-        if int(data.loc[i, 'defendant']) == user and data.loc[i, 'status'] == 'открыто':
+        if int(data.loc[i, 'defendant'][2:-1]) == user and data.loc[i, 'status'] == 'открыто':
             embed = discord.Embed(
             title = '-'*60,
             colour = discord.Colour.dark_magenta()
